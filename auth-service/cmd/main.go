@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,19 +23,18 @@ import (
 )
 
 func main() {
-	// 0. Slog (Structured Logger) Ayarları
-	// Docker vb. container ortamlarında en çok tercih edilen JSON formattır.
+	// 0. Slog (Structured Logger)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	// 1. Config Yükle
+	// 1. Config Yükle (Eklenti: Validation)
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
 
-	// 2. Veritabanına Bağlan (pgx sürücüsü)
+	// 2. Veritabanına Bağlan
 	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBSSLMode)
 
@@ -45,6 +45,11 @@ func main() {
 	}
 	defer db.Close()
 
+	// Eklenti: Connection Pooling (Veritabanı yorulmasını ve connection leak'leri önler)
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	if err := db.Ping(); err != nil {
 		slog.Error("database unreachable. is container running?", "error", err)
 		os.Exit(1)
@@ -52,7 +57,7 @@ func main() {
 
 	slog.Info("connected to database successfully", "db", cfg.DBName)
 
-	// 3. Katmanları Birleştir (Dependency Injection / Wiring)
+	// 3. Katmanları Birleştir
 	userRepo := repository.NewUserRepository(db)
 	tokenRepo := repository.NewTokenRepository(db)
 
@@ -61,14 +66,23 @@ func main() {
 
 	authHandler := handler.NewAuthHandler(authSvc)
 
-	// 4. Echo Router Başlat ve Ayarla (v5)
+	// 4. Echo Router Başlat ve Ayarla
 	e := echo.New()
-	
-	// Echo'nun tüm default logları artık yukarıda hazırladığımız slog sistemini kullanacak
-	e.Logger = logger 
+	e.Logger = logger
 	
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS("*"))
+	
+	// Eklenti: Rate Limiter (Saniyede Max 20 IP isteği - DDoS & Brute Force koruması)
+	e.Use(middleware.RateLimiter(middleware.NewRateLimiterMemoryStore(20.0)))
+
+	// Eklenti: Health-Check (Container, Node veya Load Balancer için Canlılık Testi)
+	e.GET("/health", func(c *echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]string{
+			"status": "UP",
+			"database": "connected",
+		})
+	})
 
 	// 5. Rota Bağlantıları
 	v1 := e.Group("/api/v1")
