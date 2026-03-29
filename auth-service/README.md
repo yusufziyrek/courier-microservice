@@ -1,17 +1,17 @@
 # 🔐 Auth Service (Courier Microservice)
 
-Canlı kullanıma (**Production-Ready**) hazır, Echo v5 ve Go rutinleri üzerine inşa edilmiş yüksek performanslı Kimlik Doğrulama (Authentication) mikroservisidir.
+Bu servis, **Production-grade (Üretim Seviyesi) Mimari Desenler** kullanılarak, Echo v5 (RC) ve Go rutinleri üzerine inşa edilmiş yüksek performanslı bir Kimlik Doğrulama mikroservisidir.
 
-## 🌟 Öne Çıkan Özellikler & Mimari Best-Practice'ler
+## 🌟 Öne Çıkan Özellikler & Mimari Yaklaşımlar
 
-Bu servis, kurumsal seviye bir güvenliği ve ayakta kalma kabiliyetini sağlamak amacıyla katı kurallarla yazılmıştır:
+Sistem, ölçeklenebilir ve bakımı kolay bir yapı sunmak amacıyla aşağıdaki yaklaşımlarla geliştirilmiştir:
 
-- **Clean Architecture (3 Katmanlı):** `Handler`, `Service`, `Repository` yapıları ayrıştırılmış; `Domain` entity'leri merkeze alınarak bağımlılıklar koptarılmıştır.
-- **Token Rotasyonu (JWT):** Sıradan JWT kullanımından farklı olarak **Opaque** *Refresh Token* yapısı kurulmuştur. Her yenileme (Refresh) işleminde eski token güvenlik gereği veri tabanından kalıcı olarak yok edilir.
-- **Kalkan & Rate Limiting:** Kaba kuvvet (Brute-Force) sözlük saldırılarını engellemek adına IP başına saniyede belirli limite sahip Memory Store Rate-Limiter mevcuttur.
-- **Veritabanı Havuzu (Connection Pooling):** Ağır trafik patlamalarında veritabanını felç etmemek için `MaxOpenConns` ve `MaxIdleConns` devreye alınmıştır.
-- **Fail-Fast Doğrulama (Validator):** Kritik sistem konfigürasyonları (örn: 16 byte algoritmik `JWT_SECRET`) `.env` üzerinden eksik verilirse, sistem yarım çalışmak yerine kendini doğrudan baştan durdurur.
-- **Bcrypt & Structured Logging:** Tüm loglar `log/slog` ile JSON formatında kaydedilir ve şifreler "Cost: 12" hash ile saklanır.
+- **Clean Architecture (3 Katmanlı):** `Handler`, `Service`, `Repository` katmanları ile tam izolasyon.
+- **Token Rotasyonu (JWT):** Opaque *Refresh Token* yapısı ile güvenli oturum yönetimi.
+- **Rate Limiting:** IP tabanlı istek sınırlama ile temel Brute-Force koruması.
+- **Connection Pooling:** Veritabanı kaynaklarının verimli kullanımı.
+- **Fail-Fast Configuration:** Validator entegrasyonu ile eksik yapılandırmada anında durma.
+- **Structured Logging:** `log/slog` ile JSON formatında sistem kayıtları.
 
 ---
 
@@ -35,16 +35,24 @@ auth-service/
 
 ---
 
+## 📋 Önkoşullar & Bağımlılıklar
+
+Servisin çalışabilmesi için aşağıdaki bileşenlerin hazır olması gerekmektedir:
+- **Go 1.22+**
+- **PostgreSQL 15+** (Docker üzerinden veya yerel kurulum)
+
+---
+
 ## 🚀 Kurulum & Çalıştırma Rehberi
 
-İlk kurulum esnasında `.env.example` dosyasını referans alarak kök dizinde bir `.env` dosyası oluşturun. Özellikle `JWT_SECRET` bölümünün rastgele üretilmiş uzun bir Cryptography anahtarı olmasına özen gösterin.
+İlk kurulum esnasında `.env.example` dosyasını referans alarak kök dizinde bir `.env` dosyası oluşturun. 
 
-**1. Veritabanını Hazırlama (Docker Gerekir)**
+**1. Veritabanını Hazırlama**
 
-`db.sh` betiğini kullanarak kendinize izole bir PostgreSQL ortamı kurabilirsiniz. Bu sayede bilgisayarınıza Postgres yüklemenize gerek kalmaz.
+Eğer sisteminizde Docker yüklü ise, `db.sh` betiği ile izole bir PostgreSQL ortamını saniyeler içinde kurabilirsiniz. Eğer yerel bir Postgres kullanıyorsanız, `.env` dosyasındaki bağlantı bilgilerini buna göre güncelleyin.
 
 ```bash
-# Docker içindeki Auth-DB imajı indirilir, ayağa kalkar, migration ve indexler yaratılır
+# Docker ortamını hazırlamak için (opsiyonel):
 sh db.sh reset
 ```
 
@@ -52,7 +60,7 @@ sh db.sh reset
 
 ```bash
 go run ./cmd/main.go
-# VEYA doğrudan derleyip çalıştırabilirsiniz:
+# VEYA derleyip çalıştırabilirsiniz:
 go build -o bin/app ./cmd/main.go && ./bin/app
 ```
 
@@ -60,15 +68,13 @@ go build -o bin/app ./cmd/main.go && ./bin/app
 
 ## 📐 Endpoints (API V1 Spesifikasyonları)
 
-Varsayılan port HTTP `:8081` üzerinden yayın yapar.
-
 | İsim | Method | Endpoint | İçerik (Payload / Header) | Yetki |
 |---|---|---|---|---|
-| **Sağlık Testi**| GET | `/health` | Kubernetes / Load Balancer canlılık testi | 🔴 Yok |
+| **Sağlık Testi**| GET | `/health` | Servis ve DB bağlantı durumunu döner | 🔴 Yok |
 | **Kayıt Ol** | POST | `/api/v1/auth/register` | `{"email", "password", "full_name"}` | 🔴 Yok |
-| **Giriş Yap** | POST | `/api/v1/auth/login` | `{"email", "password"}` - *(Token çifti döner)* | 🔴 Yok |
-| **Token Yenile** | POST | `/api/v1/auth/refresh` | `{"refresh_token"}` - *(Eskisi imha olur)* | 🔴 Yok |
-| **Çıkış**| POST | `/api/v1/auth/logout` | `{"refresh_token"}` - *(Kalıcı silinme)* | 🔴 Yok |
+| **Giriş Yap** | POST | `/api/v1/auth/login` | `{"email", "password"}` | 🔴 Yok |
+| **Token Yenile** | POST | `/api/v1/auth/refresh` | `{"refresh_token"}` | 🔴 Yok |
+| **Çıkış**| POST | `/api/v1/auth/logout` | `{"refresh_token"}` | 🔴 Yok |
 | **Profil(Ben)**| GET | `/api/v1/auth/me` | `Authorization: Bearer <Access_Token>` | 🟢 Gerekli |
 
 ---
