@@ -1,5 +1,6 @@
 package com.yusufziyrek.order.application.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.yusufziyrek.order.domain.OrderStatus;
 
 import java.math.BigDecimal;
@@ -11,17 +12,17 @@ import java.util.UUID;
 // Controller kesinlikle "Order.java" nesnesini görmez, sadece bunu görür.
 public record OrderResult(
     UUID id,
-    UUID userId,
+    @JsonProperty("user_id") UUID userId,
     OrderStatus status,
-    BigDecimal totalAmount,
-    OffsetDateTime createdAt,
-    OffsetDateTime updatedAt,
+    @JsonProperty("total_amount") BigDecimal totalAmount,
+    @JsonProperty("created_at") OffsetDateTime createdAt,
+    @JsonProperty("updated_at") OffsetDateTime updatedAt,
     List<OrderItemResult> items
 ) {
     public record OrderItemResult(
         UUID id,
-        UUID productId,
+        @JsonProperty("product_id") UUID productId,
         Integer quantity,
-        BigDecimal unitPrice
+        @JsonProperty("unit_price") BigDecimal unitPrice
     ) {}
 }

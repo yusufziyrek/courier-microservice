@@ -81,7 +81,7 @@ class OrderControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/api/orders")
+        mockMvc.perform(post("/api/v1/orders")
                         .requestAttr("user_id", userId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
@@ -98,7 +98,7 @@ class OrderControllerTest {
 
         when(getOrderUseCase.execute(eq(orderId))).thenReturn(result(orderId, owner, OrderStatus.PENDING));
 
-        mockMvc.perform(get("/api/orders/{id}", orderId)
+        mockMvc.perform(get("/api/v1/orders/{id}", orderId)
                         .requestAttr("user_id", requester.toString()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
@@ -113,7 +113,7 @@ class OrderControllerTest {
         when(changeOrderStatusUseCase.execute(eq(orderId), anyString()))
                 .thenReturn(result(orderId, userId, OrderStatus.CONFIRMED));
 
-        mockMvc.perform(patch("/api/orders/{id}/status", orderId)
+        mockMvc.perform(patch("/api/v1/orders/{id}/status", orderId)
                         .requestAttr("user_id", userId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"CONFIRMED\"}"))
@@ -129,7 +129,7 @@ class OrderControllerTest {
         when(getOrderUseCase.execute(eq(orderId))).thenReturn(result(orderId, userId, OrderStatus.PENDING));
         doNothing().when(cancelOrderUseCase).execute(eq(orderId));
 
-        mockMvc.perform(delete("/api/orders/{id}", orderId)
+        mockMvc.perform(delete("/api/v1/orders/{id}", orderId)
                         .requestAttr("user_id", userId.toString()))
                 .andExpect(status().isNoContent());
     }
@@ -139,11 +139,11 @@ class OrderControllerTest {
         UUID userId = UUID.randomUUID();
         String invalidBody = "{\"items\":[]}";
 
-        mockMvc.perform(post("/api/orders")
+        mockMvc.perform(post("/api/v1/orders")
                         .requestAttr("user_id", userId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidBody))
-                .andExpect(status().isUnprocessableEntity())
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 AUTH_BASE_URL="${AUTH_BASE_URL:-http://localhost:8081/api/v1/auth}"
-ORDER_BASE_URL="${ORDER_BASE_URL:-http://localhost:8082/api/orders}"
+ORDER_BASE_URL="${ORDER_BASE_URL:-http://localhost:8082/api/v1/orders}"
 
 EMAIL="ordertest$(date +%s)@example.com"
 PASSWORD="secret123"

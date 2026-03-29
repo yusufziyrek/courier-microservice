@@ -36,7 +36,7 @@ class JwtUserFilterTest {
     @Test
     void shouldReturnUnauthorizedWhenHeaderMissing() throws ServletException, IOException {
         JwtUserFilter filter = new JwtUserFilter(SECRET);
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/orders");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/orders");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter.doFilter(request, response, new MockFilterChain());
@@ -47,7 +47,7 @@ class JwtUserFilterTest {
     @Test
     void shouldSetUserIdForValidToken() throws ServletException, IOException {
         JwtUserFilter filter = new JwtUserFilter(SECRET);
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/orders");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/orders");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         String userId = UUID.randomUUID().toString();
@@ -62,7 +62,7 @@ class JwtUserFilterTest {
     @Test
     void shouldReturnUnauthorizedWhenUserIdClaimMissing() throws ServletException, IOException {
         JwtUserFilter filter = new JwtUserFilter(SECRET);
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/orders");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/orders");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         request.addHeader("Authorization", "Bearer " + tokenWithoutUserId());

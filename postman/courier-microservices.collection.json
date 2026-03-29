@@ -1,0 +1,339 @@
+{
+  "info": {
+    "_postman_id": "15bf7f40-b212-4ec7-8a6a-e6d725f5d6f4",
+    "name": "Courier Microservices",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Setup Random Email",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const randomEmail = `ordertest${Date.now()}@example.com`;",
+              "pm.environment.set('email', randomEmail);",
+              "pm.test('email set', function () { pm.expect(pm.environment.get('email')).to.include('@'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "http://localhost:8081/health"
+      }
+    },
+    {
+      "name": "1. Auth Health",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "http://localhost:8081/health"
+      }
+    },
+    {
+      "name": "2. Order Health",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "http://localhost:8082/actuator/health"
+      }
+    },
+    {
+      "name": "3. Register",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(201);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"full_name\": \"{{full_name}}\"\n}"
+        },
+        "url": "{{base_auth}}/register"
+      }
+    },
+    {
+      "name": "4. Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('access_token', json.access_token);",
+              "pm.environment.set('refresh_token', json.refresh_token);",
+              "pm.test('tokens saved', function () {",
+              "  pm.expect(pm.environment.get('access_token')).to.be.a('string').and.not.empty;",
+              "  pm.expect(pm.environment.get('refresh_token')).to.be.a('string').and.not.empty;",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+        },
+        "url": "{{base_auth}}/login"
+      }
+    },
+    {
+      "name": "5. Get Me",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": "{{base_auth}}/me"
+      }
+    },
+    {
+      "name": "6. Order Unauthorized Check",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(401);",
+              "const json = pm.response.json();",
+              "pm.expect(json).to.have.property('error');",
+              "pm.expect(json).to.have.property('code');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"22222222-2222-2222-2222-222222222222\",\n      \"quantity\": 1,\n      \"unitPrice\": 9.99\n    }\n  ]\n}"
+        },
+        "url": "{{base_order}}"
+      }
+    },
+    {
+      "name": "7. Create Order",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(201);",
+              "const json = pm.response.json();",
+              "pm.environment.set('order_id', json.id);",
+              "pm.test('snake_case fields exist', function () {",
+              "  pm.expect(json).to.have.property('user_id');",
+              "  pm.expect(json).to.have.property('total_amount');",
+              "  pm.expect(json).to.have.property('created_at');",
+              "  pm.expect(json).to.have.property('updated_at');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"22222222-2222-2222-2222-222222222222\",\n      \"quantity\": 2,\n      \"unitPrice\": 15.50\n    }\n  ]\n}"
+        },
+        "url": "{{base_order}}"
+      }
+    },
+    {
+      "name": "8. Get Order",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": "{{base_order}}/{{order_id}}"
+      }
+    },
+    {
+      "name": "9. Change Status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "const json = pm.response.json();",
+              "pm.expect(json.status).to.eql('CONFIRMED');"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"CONFIRMED\"\n}"
+        },
+        "url": "{{base_order}}/{{order_id}}/status"
+      }
+    },
+    {
+      "name": "10. Cancel Order",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(204);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": "{{base_order}}/{{order_id}}"
+      }
+    },
+    {
+      "name": "11. Refresh Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.response.to.have.status(200);",
+              "const json = pm.response.json();",
+              "pm.environment.set('access_token', json.access_token);",
+              "pm.environment.set('refresh_token', json.refresh_token);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+        },
+        "url": "{{base_auth}}/refresh"
+      }
+    }
+  ]
+}

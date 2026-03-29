@@ -49,7 +49,7 @@ public class GlobalExceptionHandler {
         payload.put("error", "Validation failed");
         payload.put("code", "VALIDATION_ERROR");
         payload.put("details", fieldErrors);
-        return ResponseEntity.unprocessableEntity().body(payload);
+        return ResponseEntity.badRequest().body(payload);
     }
 
     @ExceptionHandler(RuntimeException.class)

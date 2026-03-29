@@ -44,12 +44,12 @@ mvn spring-boot:run
 
 ## API
 
-Base URL: `http://localhost:8082/api/orders`
+Base URL: `http://localhost:8082/api/v1/orders`
 
-- `POST /api/orders`
-- `GET /api/orders/{id}`
-- `PATCH /api/orders/{id}/status`
-- `DELETE /api/orders/{id}`
+- `POST /api/v1/orders`
+- `GET /api/v1/orders/{id}`
+- `PATCH /api/v1/orders/{id}/status`
+- `DELETE /api/v1/orders/{id}`
 
 Tüm endpointler JWT gerektirir:
 

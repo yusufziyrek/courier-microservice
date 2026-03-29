@@ -3,6 +3,8 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"reflect"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -42,7 +44,7 @@ func (h *AuthHandler) mapError(c *echo.Context, err error) error {
 
 func (h *AuthHandler) Register(c *echo.Context) error {
 	var req RegisterRequest
-	
+
 	// v5 API: JSON Body parse
 	if err := echo.BindBody(c, &req); err != nil {
 		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid JSON format", Code: "BAD_REQUEST"})
@@ -50,7 +52,11 @@ func (h *AuthHandler) Register(c *echo.Context) error {
 
 	// Validation
 	if err := h.validator.Struct(req); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error(), Code: "VALIDATION_ERROR"})
+		return c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "Validation failed",
+			Code:    "VALIDATION_ERROR",
+			Details: validationDetails(req, err),
+		})
 	}
 
 	user, err := h.authSvc.Register(c.Request().Context(), req.Email, req.Password, req.FullName)
@@ -68,7 +74,11 @@ func (h *AuthHandler) Login(c *echo.Context) error {
 	}
 
 	if err := h.validator.Struct(req); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error(), Code: "VALIDATION_ERROR"})
+		return c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "Validation failed",
+			Code:    "VALIDATION_ERROR",
+			Details: validationDetails(req, err),
+		})
 	}
 
 	acc, ref, err := h.authSvc.Login(c.Request().Context(), req.Email, req.Password)
@@ -89,7 +99,11 @@ func (h *AuthHandler) Refresh(c *echo.Context) error {
 	}
 
 	if err := h.validator.Struct(req); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error(), Code: "VALIDATION_ERROR"})
+		return c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   "Validation failed",
+			Code:    "VALIDATION_ERROR",
+			Details: validationDetails(req, err),
+		})
 	}
 
 	acc, ref, err := h.authSvc.Refresh(c.Request().Context(), req.RefreshToken)
@@ -134,4 +148,48 @@ func (h *AuthHandler) GetMe(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, user)
+}
+
+func validationDetails(req any, err error) map[string]string {
+	details := map[string]string{}
+
+	validationErrors, ok := err.(validator.ValidationErrors)
+	if !ok {
+		details["request"] = err.Error()
+		return details
+	}
+
+	for _, fieldErr := range validationErrors {
+		fieldName := fieldErr.Field()
+		if jsonField := jsonFieldName(req, fieldName); jsonField != "" {
+			fieldName = jsonField
+		}
+		details[fieldName] = fieldErr.Error()
+	}
+
+	return details
+}
+
+func jsonFieldName(req any, structField string) string {
+	t := reflect.TypeOf(req)
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+
+	field, ok := t.FieldByName(structField)
+	if !ok {
+		return ""
+	}
+
+	jsonTag := field.Tag.Get("json")
+	if jsonTag == "" {
+		return ""
+	}
+
+	name := strings.Split(jsonTag, ",")[0]
+	if name == "-" {
+		return ""
+	}
+
+	return name
 }
