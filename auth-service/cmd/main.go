@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,25 +22,35 @@ import (
 )
 
 func main() {
+	// 0. Slog (Structured Logger) Ayarları
+	// Docker vb. container ortamlarında en çok tercih edilen JSON formattır.
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	// 1. Config Yükle
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Config hatasi: %v", err)
+		slog.Error("failed to load config", "error", err)
+		os.Exit(1)
 	}
 
-	// 2. Veritabanına Bağlan (pgx sürücüsü kullanıyoruz, daha performanslıdır)
+	// 2. Veritabanına Bağlan (pgx sürücüsü)
 	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName, cfg.DBSSLMode)
 
 	db, err := sqlx.Connect("pgx", dsn)
 	if err != nil {
-		log.Fatalf("DB baglanti hatasi: %v", err)
+		slog.Error("database connection failed", "error", err)
+		os.Exit(1)
 	}
-	defer db.Close() // Uygulama kapanırken DB bağlantılarını da düzgünce kapat
+	defer db.Close()
 
 	if err := db.Ping(); err != nil {
-		log.Fatalf("DB'ye erisilemiyor (Container calisiyor mu? psql sifreleri dogru mu?): %v", err)
+		slog.Error("database unreachable. is container running?", "error", err)
+		os.Exit(1)
 	}
+
+	slog.Info("connected to database successfully", "db", cfg.DBName)
 
 	// 3. Katmanları Birleştir (Dependency Injection / Wiring)
 	userRepo := repository.NewUserRepository(db)
@@ -53,21 +63,21 @@ func main() {
 
 	// 4. Echo Router Başlat ve Ayarla (v5)
 	e := echo.New()
-
-	// Çökmeleri önlemek ve origin'lere izin vermek için temel korumalar
+	
+	// Echo'nun tüm default logları artık yukarıda hazırladığımız slog sistemini kullanacak
+	e.Logger = logger 
+	
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	e.Use(middleware.CORS("*"))
 
-	// 5. Rota Bağlantıları (Routing)
+	// 5. Rota Bağlantıları
 	v1 := e.Group("/api/v1")
 	authGroup := v1.Group("/auth")
-
+	
 	authGroup.POST("/register", authHandler.Register)
 	authGroup.POST("/login", authHandler.Login)
 	authGroup.POST("/refresh", authHandler.Refresh)
 	authGroup.POST("/logout", authHandler.Logout)
-
-	// JWTAuth middleware'imizi /me endpoint'ine özel enjekte ediyoruz
 	authGroup.GET("/me", authHandler.GetMe, authmw.JWTAuth(tokenSvc))
 
 	// 6. Graceful Shutdown
@@ -79,8 +89,9 @@ func main() {
 		GracefulTimeout: 10 * time.Second,
 	}
 
-	fmt.Printf("--Auth Service hazir! Dinlenen Port: %d\n", cfg.ServerPort)
+	slog.Info("Auth Service is ready!", "port", cfg.ServerPort)
 	if err := sc.Start(ctx, e); err != nil {
-		log.Fatalf("Sunucu kapatildi: %v", err)
+		slog.Error("server shut down", "error", err)
+		os.Exit(1)
 	}
 }

@@ -36,7 +36,7 @@ func (h *AuthHandler) mapError(c *echo.Context, err error) error {
 	case errors.Is(err, domain.ErrUserNotFound):
 		return c.JSON(http.StatusNotFound, ErrorResponse{Error: err.Error(), Code: "USER_NOT_FOUND"})
 	default:
-		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Beklenmeyen sunucu hatasi", Code: "INTERNAL_ERROR"})
+		return c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Unexpected server error", Code: "INTERNAL_ERROR"})
 	}
 }
 
@@ -45,7 +45,7 @@ func (h *AuthHandler) Register(c *echo.Context) error {
 	
 	// v5 API: JSON Body parse
 	if err := echo.BindBody(c, &req); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Gecersiz JSON formati", Code: "BAD_REQUEST"})
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid JSON format", Code: "BAD_REQUEST"})
 	}
 
 	// Validation
@@ -64,7 +64,7 @@ func (h *AuthHandler) Register(c *echo.Context) error {
 func (h *AuthHandler) Login(c *echo.Context) error {
 	var req LoginRequest
 	if err := echo.BindBody(c, &req); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Gecersiz JSON formati", Code: "BAD_REQUEST"})
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid JSON format", Code: "BAD_REQUEST"})
 	}
 
 	if err := h.validator.Struct(req); err != nil {
@@ -85,7 +85,7 @@ func (h *AuthHandler) Login(c *echo.Context) error {
 func (h *AuthHandler) Refresh(c *echo.Context) error {
 	var req RefreshRequest
 	if err := echo.BindBody(c, &req); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Gecersiz JSON formati", Code: "BAD_REQUEST"})
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid JSON format", Code: "BAD_REQUEST"})
 	}
 
 	if err := h.validator.Struct(req); err != nil {
@@ -106,13 +106,13 @@ func (h *AuthHandler) Refresh(c *echo.Context) error {
 func (h *AuthHandler) Logout(c *echo.Context) error {
 	var req RefreshRequest
 	if err := echo.BindBody(c, &req); err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Gecersiz JSON formati", Code: "BAD_REQUEST"})
+		return c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid JSON format", Code: "BAD_REQUEST"})
 	}
 
 	// Siledik mi silmedik mi dışarı sızdırmaya gerek yok, sildik diyelim :)
 	_ = h.authSvc.Logout(c.Request().Context(), req.RefreshToken)
 
-	return c.JSON(http.StatusOK, map[string]string{"message": "basariyla cikis yapildi"})
+	return c.JSON(http.StatusOK, map[string]string{"message": "Logged out successfully"})
 }
 
 func (h *AuthHandler) GetMe(c *echo.Context) error {
@@ -120,12 +120,12 @@ func (h *AuthHandler) GetMe(c *echo.Context) error {
 	// Echo v5 Generic helper'ları ile tip güvenli alıyoruz.
 	userIDStr, err := echo.ContextGet[string](c, "user_id")
 	if err != nil || userIDStr == "" {
-		return c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Yetkisiz islem (Token bulunamadi)", Code: "UNAUTHORIZED"})
+		return c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized (Token missing)", Code: "UNAUTHORIZED"})
 	}
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		return c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Yetkisiz islem (Bozuk Token)", Code: "UNAUTHORIZED"})
+		return c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Unauthorized (Invalid token)", Code: "UNAUTHORIZED"})
 	}
 
 	user, err := h.authSvc.GetMe(c.Request().Context(), userID)

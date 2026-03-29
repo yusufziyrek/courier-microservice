@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/.env"
 
 if [ ! -f "$ENV_FILE" ]; then
-    echo "ERROR: .env dosyasi bulunamadi"
+    echo "ERROR: .env file not found"
     exit 1
 fi
 
@@ -63,19 +63,19 @@ SQL
         ;;
     logs)    docker logs $CONTAINER --tail 50 ;;
     *)
-        echo "Kullanim: ./db.sh <komut>"
+        echo "Usage: ./db.sh <command>"
         echo ""
-        echo "  create   Container olustur"
-        echo "  start    Baslat"
-        echo "  stop     Durdur"
-        echo "  status   Durum"
-        echo "  connect  psql baglantisi"
-        echo "  query    SQL calistir (./db.sh query \"SELECT...\")"
-        echo "  tables   Tablolari listele"
-        echo "  migrate  Tablolari olustur"
-        echo "  clean    Verileri sil"
-        echo "  destroy  Container'i sil"
-        echo "  reset    Sifirdan olustur"
-        echo "  logs     Loglari goster"
+        echo "  create   Create container"
+        echo "  start    Start container"
+        echo "  stop     Stop container"
+        echo "  status   Show status"
+        echo "  connect  Attach to psql"
+        echo "  query    Run SQL (./db.sh query \"SELECT...\")"
+        echo "  tables   List tables"
+        echo "  migrate  Create tables & indexes"
+        echo "  clean    Delete all table data (truncate)"
+        echo "  destroy  Delete container entirely"
+        echo "  reset    Recreate container from scratch"
+        echo "  logs     Tail real-time logs"
         ;;
 esac

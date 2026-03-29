@@ -18,7 +18,7 @@ func JWTAuth(tokenSvc service.TokenService) echo.MiddlewareFunc {
 			
 			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 				return c.JSON(http.StatusUnauthorized, handler.ErrorResponse{
-					Error: "Authorization basligi eksik veya formati hatali",
+					Error: "missing or malformed authorization header",
 					Code:  "UNAUTHORIZED",
 				})
 			}
@@ -30,7 +30,7 @@ func JWTAuth(tokenSvc service.TokenService) echo.MiddlewareFunc {
 			userID, err := tokenSvc.ValidateAccessToken(tokenStr)
 			if err != nil {
 				return c.JSON(http.StatusUnauthorized, handler.ErrorResponse{
-					Error: "Zaman asimina ugramis veya gecersiz token",
+					Error: "expired or invalid token",
 					Code:  "INVALID_TOKEN",
 				})
 			}

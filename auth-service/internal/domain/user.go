@@ -9,10 +9,10 @@ import (
 
 // Hata Kodları - Katmanlar arası ortak kullanacağımız hatalar
 var (
-	ErrUserNotFound       = errors.New("kayit bulunamadi")
-	ErrInvalidCredentials = errors.New("gecersiz e-posta veya sifre")
-	ErrEmailExists        = errors.New("bu e-posta adresi zaten kullanimda")
-	ErrInvalidToken       = errors.New("gecersiz veya suresi dolmus token")
+	ErrUserNotFound       = errors.New("record not found")
+	ErrInvalidCredentials = errors.New("invalid email or password")
+	ErrEmailExists        = errors.New("email already in use")
+	ErrInvalidToken       = errors.New("invalid or expired token")
 )
 
 // User sistemdeki ana kullanıcı modelimiz
