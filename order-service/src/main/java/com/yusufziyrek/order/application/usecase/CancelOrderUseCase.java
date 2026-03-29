@@ -1,5 +1,6 @@
 package com.yusufziyrek.order.application.usecase;
 
+import com.yusufziyrek.order.application.exception.OrderNotFoundException;
 import com.yusufziyrek.order.domain.Order;
 import com.yusufziyrek.order.domain.OrderEventPublisher;
 import com.yusufziyrek.order.domain.OrderRepository;
@@ -18,7 +19,7 @@ public class CancelOrderUseCase {
 
     public void execute(UUID id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Sipariş Bulunamadı: " + id));
+                .orElseThrow(() -> new OrderNotFoundException(id));
 
         order.cancel();
         orderRepository.save(order);

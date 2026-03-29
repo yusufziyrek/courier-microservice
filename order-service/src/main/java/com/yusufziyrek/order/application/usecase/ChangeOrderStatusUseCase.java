@@ -1,6 +1,7 @@
 package com.yusufziyrek.order.application.usecase;
 
 import com.yusufziyrek.order.application.dto.OrderResult;
+import com.yusufziyrek.order.application.exception.OrderNotFoundException;
 import com.yusufziyrek.order.application.mapper.OrderResultMapper;
 import com.yusufziyrek.order.domain.InvalidOrderStateException;
 import com.yusufziyrek.order.domain.Order;
@@ -8,6 +9,7 @@ import com.yusufziyrek.order.domain.OrderEventPublisher;
 import com.yusufziyrek.order.domain.OrderRepository;
 import com.yusufziyrek.order.domain.OrderStatus;
 
+import java.util.Locale;
 import java.util.UUID;
 
 public class ChangeOrderStatusUseCase {
@@ -22,11 +24,11 @@ public class ChangeOrderStatusUseCase {
 
     public OrderResult execute(UUID id, String newStatusStr) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Sipariş Bulunamadı: " + id));
+                .orElseThrow(() -> new OrderNotFoundException(id));
 
         OrderStatus targetStatus;
         try {
-            targetStatus = OrderStatus.valueOf(newStatusStr.toUpperCase());
+            targetStatus = OrderStatus.valueOf(newStatusStr.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
             throw new InvalidOrderStateException("Geçersiz sipariş durumu (status): " + newStatusStr);
         }

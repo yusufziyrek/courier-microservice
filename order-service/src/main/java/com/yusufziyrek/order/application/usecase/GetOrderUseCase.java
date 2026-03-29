@@ -1,6 +1,7 @@
 package com.yusufziyrek.order.application.usecase;
 
 import com.yusufziyrek.order.application.dto.OrderResult;
+import com.yusufziyrek.order.application.exception.OrderNotFoundException;
 import com.yusufziyrek.order.application.mapper.OrderResultMapper;
 import com.yusufziyrek.order.domain.Order;
 import com.yusufziyrek.order.domain.OrderRepository;
@@ -17,7 +18,7 @@ public class GetOrderUseCase {
 
     public OrderResult execute(UUID id) {
         Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Sipariş Bulunamadı: " + id));
+                .orElseThrow(() -> new OrderNotFoundException(id));
         return OrderResultMapper.toResult(order);
     }
 }

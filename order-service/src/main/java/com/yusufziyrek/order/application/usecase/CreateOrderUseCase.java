@@ -20,6 +20,13 @@ public class CreateOrderUseCase {
     }
 
     public OrderResult execute(CreateOrderCommand command) {
+        if (command == null || command.userId() == null) {
+            throw new IllegalArgumentException("userId zorunludur");
+        }
+        if (command.items() == null || command.items().isEmpty()) {
+            throw new IllegalArgumentException("En az bir siparis kalemi zorunludur");
+        }
+
         Order order = Order.create(command.userId());
 
         command.items().forEach(itemCmd -> {
