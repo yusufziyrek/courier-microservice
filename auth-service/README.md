@@ -1,50 +1,89 @@
-# Auth Service 🔒
+# 🔐 Auth Service (Courier Microservice)
 
-Canlı kullanıma (Production-Ready) hazır, Echo v5 ve Go rutinleri üzerine inşa edilmiş yüksek performanslı Kimlik Doğrulama servisidir.
+Canlı kullanıma (**Production-Ready**) hazır, Echo v5 ve Go rutinleri üzerine inşa edilmiş yüksek performanslı Kimlik Doğrulama (Authentication) mikroservisidir.
 
-## 🌟 Neler İçerir?
-- **3 Katmanlı Mimari:** Domain, Repository ve Service izolasyonu. (Clean Architecture standardı)
-- **Token Rotasyonu:** Güvenlik sıkılaştırılmış JWT yapısı (Access + Refresh tokenlar). Geri dönük, eski Refresh token denemeleri otomatik tespit edilir.
-- **PostgreSQL & Docker:** Otomotize edilmiş container yönetimi (Sqlx, Pgx driver).
-- **Graceful Shutdown:** Echo v5 üzerinden kapanırken açık istekleri başarıyla sonlandırma.
-- **Güvenli Saklama:** Bcrypt (cost:12) ile şifre hash'leme ve çevre değişkenleri (`.env`).
-- **Structured Logging:** Go `log/slog` kütüphanesi ile modern JSON çıktıları.
+## 🌟 Öne Çıkan Özellikler & Mimari Best-Practice'ler
 
-## 🚀 Çalıştırma Rehberi
+Bu servis, kurumsal seviye bir güvenliği ve ayakta kalma kabiliyetini sağlamak amacıyla katı kurallarla yazılmıştır:
 
-İlk kurulum esnasında `.env.example` dosyasını kopyalayarak `.env` adında bir dosya oluşturun ve içini kendi güvenli değerlerinizle (özellikle uzun bir Base64 `JWT_SECRET` belirleyerek) doldurun.
+- **Clean Architecture (3 Katmanlı):** `Handler`, `Service`, `Repository` yapıları ayrıştırılmış; `Domain` entity'leri merkeze alınarak bağımlılıklar koptarılmıştır.
+- **Token Rotasyonu (JWT):** Sıradan JWT kullanımından farklı olarak **Opaque** *Refresh Token* yapısı kurulmuştur. Her yenileme (Refresh) işleminde eski token güvenlik gereği veri tabanından kalıcı olarak yok edilir.
+- **Kalkan & Rate Limiting:** Kaba kuvvet (Brute-Force) sözlük saldırılarını engellemek adına IP başına saniyede belirli limite sahip Memory Store Rate-Limiter mevcuttur.
+- **Veritabanı Havuzu (Connection Pooling):** Ağır trafik patlamalarında veritabanını felç etmemek için `MaxOpenConns` ve `MaxIdleConns` devreye alınmıştır.
+- **Fail-Fast Doğrulama (Validator):** Kritik sistem konfigürasyonları (örn: 16 byte algoritmik `JWT_SECRET`) `.env` üzerinden eksik verilirse, sistem yarım çalışmak yerine kendini doğrudan baştan durdurur.
+- **Bcrypt & Structured Logging:** Tüm loglar `log/slog` ile JSON formatında kaydedilir ve şifreler "Cost: 12" hash ile saklanır.
 
-**1. Veritabanını Hazırlama**
+---
+
+## 🗂️ Proje Dizin Yapısı
+
+```text
+auth-service/
+├── cmd/
+│   └── main.go              # Sistemin giriş noktası, Dependency Injection ve Echo ayarları
+├── internal/
+│   ├── config/              # Viper & Validator ile .env sistem yakalayıcısı
+│   ├── domain/              # Çekirdek iş modelleri (User, Token) ve Hata kodları
+│   ├── handler/             # HTTP endpoint yöneticileri (Context parse, Payload Binding)
+│   ├── middleware/          # JWT yetkilendirme yakalayıcısı
+│   ├── repository/          # Postgresql SQLx veritabanı iletişimi (Create, Lookup)
+│   └── service/             # Tüm iş mantığı, şifreleme ve token operasyonlarının beyni
+├── db.sh                    # Bağımsız Docker Postgres DB yönetim scripti
+├── test.sh                  # Terminal uçtan uca otomasyon test betiği
+└── api.http                 # VS Code için manuel REST Client testleri
+```
+
+---
+
+## 🚀 Kurulum & Çalıştırma Rehberi
+
+İlk kurulum esnasında `.env.example` dosyasını referans alarak kök dizinde bir `.env` dosyası oluşturun. Özellikle `JWT_SECRET` bölümünün rastgele üretilmiş uzun bir Cryptography anahtarı olmasına özen gösterin.
+
+**1. Veritabanını Hazırlama (Docker Gerekir)**
+
+`db.sh` betiğini kullanarak kendinize izole bir PostgreSQL ortamı kurabilirsiniz. Bu sayede bilgisayarınıza Postgres yüklemenize gerek kalmaz.
+
 ```bash
-# Docker içindeki Auth-DB ayağa kalkar, migration ve indexler yaratılır
+# Docker içindeki Auth-DB imajı indirilir, ayağa kalkar, migration ve indexler yaratılır
 sh db.sh reset
 ```
 
 **2. Projeyi Başlatma**
 
-*(Terminalde servis kök dizininde olduğunuzdan emin olun)*
 ```bash
 go run ./cmd/main.go
+# VEYA doğrudan derleyip çalıştırabilirsiniz:
+go build -o bin/app ./cmd/main.go && ./bin/app
 ```
 
-## 🧪 Test Ortamı
-Sistemde kusursuz işleyen Go unit-testleri dışında, tüm uç noktalar (endpoints) VS Code üzerinden `api.http` dosyasıyla manuel test edilebileceği gibi, yanda bulunan `.sh` dosyası üzerinden uçtan uca hızlıca otomatik de test edilebilir:
-```bash
-# Unit testler
-go test ./internal/service/... -v
+---
 
-# E2E testleri
-bash test.sh
-```
-
-## 📐 Endpoints (API V1)
+## 📐 Endpoints (API V1 Spesifikasyonları)
 
 Varsayılan port HTTP `:8081` üzerinden yayın yapar.
 
-| Method | Endpoint | Description | Auth Gerekli |
-|---|---|---|---|
-| POST | `/api/v1/auth/register` | Yeni Kullanıcı Kaydı. (Bcrypt Encryption) | Hayır |
-| POST | `/api/v1/auth/login` | Access ve Refresh Token çifti döndürür | Hayır |
-| POST | `/api/v1/auth/refresh` | Eski Refresh Token'ı imha edip yenisini üretir | Hayır |
-| POST | `/api/v1/auth/logout` | Token veritabanından kalıcı olarak silinir | Hayır |
-| GET | `/api/v1/auth/me` | JWT kontrolünden geçerek profili döner | Evet (Bearer) |
+| İsim | Method | Endpoint | İçerik (Payload / Header) | Yetki |
+|---|---|---|---|---|
+| **Sağlık Testi**| GET | `/health` | Kubernetes / Load Balancer canlılık testi | 🔴 Yok |
+| **Kayıt Ol** | POST | `/api/v1/auth/register` | `{"email", "password", "full_name"}` | 🔴 Yok |
+| **Giriş Yap** | POST | `/api/v1/auth/login` | `{"email", "password"}` - *(Token çifti döner)* | 🔴 Yok |
+| **Token Yenile** | POST | `/api/v1/auth/refresh` | `{"refresh_token"}` - *(Eskisi imha olur)* | 🔴 Yok |
+| **Çıkış**| POST | `/api/v1/auth/logout` | `{"refresh_token"}` - *(Kalıcı silinme)* | 🔴 Yok |
+| **Profil(Ben)**| GET | `/api/v1/auth/me` | `Authorization: Bearer <Access_Token>` | 🟢 Gerekli |
+
+---
+
+## 🧪 Test Ortamı
+
+Gerçek hayattaki güvenlik senaryoları `Mock Repository` üzerinden sahte objelerle **Unit Test** edilmiştir.
+
+**Birim Testleri Çalıştırmak İçin:**
+```bash
+go test ./internal/service/... -v
+```
+
+Çalışan bir sistem üzerinde **Uçtan Uca (E2E) Test** başlatmak için:
+```bash
+# Register, Login, Me, Refresh döngüsünün tam testi:
+bash test.sh
+```
