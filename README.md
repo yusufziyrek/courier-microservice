@@ -1,23 +1,63 @@
-# Courier Microservices 🚚
+# Courier Microservices
 
-Bu monorepo kargo, kurye ve teslimat süreçleri için tasarlanmış; modern, esnek ve modüler bir Go&Java mikroservis ekosistemidir.
+Bu monorepo, birbirinden bağımsız çalışan iki temel servisten oluşur:
 
-Proje, birbirine karışmayan yalıtılmış paketler halinde tasarlanmış olup **Go Workspaces (`go.work`)** sayesinde kolay bir geliştirme ve test ortamı sunmaktadır.
+- [auth-service/](auth-service/): Go + Echo ile kimlik doğrulama ve JWT üretimi
+- [order-service/](order-service/): Spring Boot ile sipariş yönetimi
 
-## 🏗️ Proje Mimarisi (Servisler)
+Sistem script-first yaklaşımla sade tutuldu. Docker Compose yok; tüm temel operasyonlar scriptlerle yönetilir.
 
-| Mikroservis | Durum | Açıklama |
+## Servisler
+
+| Servis | Port | Sağlık Endpointi |
 |---|---|---|
-| [Auth Service](./auth-service/) | ✅ Çalışır Durumda | Ekosistemin kapıcı servisi. Kayıt, giriş ve katı JWT Token rotasyonu sağlar. |
+| Auth Service | 8081 | `/health` |
+| Order Service | 8082 | `/actuator/health` |
 
-> Geliştirilecek diğer modüller (örneğin kargo rotalama, bildirim vb.) buraya eklenecektir.
+## Hızlı Başlangıç
 
-## 🚀 Başlangıç
+Repo kök dizininden:
 
-Bu ana depo, tüm sistemi bir arada tutar. İlgilendiğiniz herhangi bir servise girerek bağımsız olarak çalıştırabilir ve test edebilirsiniz. Her servisin kurulum, `.env` gereksinimleri ve test talimatları kendi dizinindeki `README.md` dosyasında belgelenmiştir.
-
-Örneğin, `auth-service` ile başlamak için:
 ```bash
-cd auth-service/
-cat README.md
+sh scripts/up.sh
 ```
+
+Bu komut şu işlemleri yapar:
+
+- `auth_postgres` ve `order_postgres` containerlarını hazırlar/başlatır
+- auth-service migration çalıştırır
+- `order_rabbitmq` containerını başlatır
+- auth-service ve order-service'i ayağa kaldırır
+- health endpointleri ile servisleri doğrular
+
+## Smoke Test
+
+Sistem ayaktayken tek komutla auth + order akışını test etmek için:
+
+```bash
+sh scripts/smoke.sh
+```
+
+Bu komut [order-service/test.sh](order-service/test.sh) üzerinden şu akışı doğrular:
+
+- register
+- login
+- order create/get/update/cancel
+- refresh token
+
+## Sistemi Durdurma
+
+```bash
+sh scripts/down.sh
+```
+
+Containerları da silmek istersen:
+
+```bash
+REMOVE_CONTAINERS=1 sh scripts/down.sh
+```
+
+## Servisleri Ayrı Çalıştırma
+
+Sadece auth-service detayları için [auth-service/README.md](auth-service/README.md),
+sadece order-service detayları için [order-service/README.md](order-service/README.md) dosyasına bak.

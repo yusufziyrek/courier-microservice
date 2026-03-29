@@ -1,21 +1,29 @@
-# 🔐 Auth Service (Courier Microservice)
+# Auth Service
 
-Bu servis, **Production-grade (Üretim Seviyesi) Mimari Desenler** kullanılarak, Echo v5 (RC) ve Go rutinleri üzerine inşa edilmiş yüksek performanslı bir Kimlik Doğrulama mikroservisidir.
+Bu servis Go + Echo ile kimlik doğrulama, JWT üretimi ve refresh token yönetimi sağlar.
 
-## 🌟 Öne Çıkan Özellikler & Mimari Yaklaşımlar
+Workspace'te önerilen kullanım, tüm sistemi kökten scriptlerle yönetmektir:
+
+```bash
+sh scripts/up.sh
+sh scripts/smoke.sh
+sh scripts/down.sh
+```
+
+## Öne Çıkan Özellikler
 
 Sistem, ölçeklenebilir ve bakımı kolay bir yapı sunmak amacıyla aşağıdaki yaklaşımlarla geliştirilmiştir:
 
-- **Clean Architecture (3 Katmanlı):** `Handler`, `Service`, `Repository` katmanları ile tam izolasyon.
-- **Token Rotasyonu (JWT):** Opaque *Refresh Token* yapısı ile güvenli oturum yönetimi.
-- **Rate Limiting:** IP tabanlı istek sınırlama ile temel Brute-Force koruması.
-- **Connection Pooling:** Veritabanı kaynaklarının verimli kullanımı.
-- **Fail-Fast Configuration:** Validator entegrasyonu ile eksik yapılandırmada anında durma.
-- **Structured Logging:** `log/slog` ile JSON formatında sistem kayıtları.
+- Clean architecture (`Handler`, `Service`, `Repository`)
+- JWT access token + opaque refresh token
+- IP bazlı rate limiting
+- SQL connection pooling
+- Fail-fast config doğrulaması
+- Structured logging (`log/slog`)
 
 ---
 
-## 🗂️ Proje Dizin Yapısı
+## Proje Dizin Yapısı
 
 ```text
 auth-service/
@@ -35,28 +43,28 @@ auth-service/
 
 ---
 
-## 📋 Önkoşullar & Bağımlılıklar
+## Ön Koşullar
 
-Servisin çalışabilmesi için aşağıdaki bileşenlerin hazır olması gerekmektedir:
-- **Go 1.22+**
-- **PostgreSQL 15+** (Docker üzerinden veya yerel kurulum)
+Servisin çalışması için:
+- Go 1.22+
+- PostgreSQL 15+ (Docker veya lokal)
 
 ---
 
-## 🚀 Kurulum & Çalıştırma Rehberi
+## Lokal Çalıştırma
 
-İlk kurulum esnasında `.env.example` dosyasını referans alarak kök dizinde bir `.env` dosyası oluşturun. 
+İlk kurulumda `.env.example` baz alınarak `.env` oluştur.
 
-**1. Veritabanını Hazırlama**
+1. Veritabanını Hazırlama
 
-Eğer sisteminizde Docker yüklü ise, `db.sh` betiği ile izole bir PostgreSQL ortamını saniyeler içinde kurabilirsiniz. Eğer yerel bir Postgres kullanıyorsanız, `.env` dosyasındaki bağlantı bilgilerini buna göre güncelleyin.
+Docker varsa `db.sh` ile izole Postgres ortamı kurulur. Lokal Postgres kullanıyorsan `.env` bağlantı bilgilerini güncelle.
 
 ```bash
 # Docker ortamını hazırlamak için (opsiyonel):
 sh db.sh reset
 ```
 
-**2. Projeyi Başlatma**
+2. Servisi Başlatma
 
 ```bash
 go run ./cmd/main.go
@@ -66,30 +74,35 @@ go build -o bin/app ./cmd/main.go && ./bin/app
 
 ---
 
-## 📐 Endpoints (API V1 Spesifikasyonları)
+## Endpoints
 
 | İsim | Method | Endpoint | İçerik (Payload / Header) | Yetki |
 |---|---|---|---|---|
-| **Sağlık Testi**| GET | `/health` | Servis ve DB bağlantı durumunu döner | 🔴 Yok |
-| **Kayıt Ol** | POST | `/api/v1/auth/register` | `{"email", "password", "full_name"}` | 🔴 Yok |
-| **Giriş Yap** | POST | `/api/v1/auth/login` | `{"email", "password"}` | 🔴 Yok |
-| **Token Yenile** | POST | `/api/v1/auth/refresh` | `{"refresh_token"}` | 🔴 Yok |
-| **Çıkış**| POST | `/api/v1/auth/logout` | `{"refresh_token"}` | 🔴 Yok |
-| **Profil(Ben)**| GET | `/api/v1/auth/me` | `Authorization: Bearer <Access_Token>` | 🟢 Gerekli |
+| Sağlık Testi | GET | `/health` | Servis ve DB bağlantı durumunu döner | Yok |
+| Kayıt Ol | POST | `/api/v1/auth/register` | `{"email", "password", "full_name"}` | Yok |
+| Giriş Yap | POST | `/api/v1/auth/login` | `{"email", "password"}` | Yok |
+| Token Yenile | POST | `/api/v1/auth/refresh` | `{"refresh_token"}` | Yok |
+| Çıkış | POST | `/api/v1/auth/logout` | `{"refresh_token"}` | Yok |
+| Profil (Me) | GET | `/api/v1/auth/me` | `Authorization: Bearer <Access_Token>` | Gerekli |
 
 ---
 
-## 🧪 Test Ortamı
+## Test
 
-Gerçek hayattaki güvenlik senaryoları `Mock Repository` üzerinden sahte objelerle **Unit Test** edilmiştir.
+Unit testler mock repository ile koşar.
 
 **Birim Testleri Çalıştırmak İçin:**
 ```bash
 go test ./internal/service/... -v
 ```
 
-Çalışan bir sistem üzerinde **Uçtan Uca (E2E) Test** başlatmak için:
+Çalışan bir sistemde auth test scripti için:
 ```bash
-# Register, Login, Me, Refresh döngüsünün tam testi:
 bash test.sh
+```
+
+Tüm sistem için tek komut smoke testi:
+
+```bash
+sh ../scripts/smoke.sh
 ```
