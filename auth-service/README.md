@@ -1,8 +1,18 @@
 # Auth Service
 
-Bu servis Go + Echo ile kimlik doğrulama, JWT üretimi ve refresh token yönetimi sağlar.
+Auth Service provides user authentication and token management using Go + Echo.
 
-Workspace'te önerilen kullanım, tüm sistemi kökten scriptlerle yönetmektir:
+It supports:
+
+- user registration
+- login (access token + refresh token)
+- refresh token rotation
+- logout
+- protected profile endpoint (`/me`)
+
+## Recommended Local Workflow
+
+From repository root:
 
 ```bash
 sh scripts/up.sh
@@ -10,99 +20,104 @@ sh scripts/smoke.sh
 sh scripts/down.sh
 ```
 
-## Öne Çıkan Özellikler
+## Architecture
 
-Sistem, ölçeklenebilir ve bakımı kolay bir yapı sunmak amacıyla aşağıdaki yaklaşımlarla geliştirilmiştir:
+The service follows layered clean architecture:
 
-- Clean architecture (`Handler`, `Service`, `Repository`)
-- JWT access token + opaque refresh token
-- IP bazlı rate limiting
-- SQL connection pooling
-- Fail-fast config doğrulaması
-- Structured logging (`log/slog`)
+- `handler`: HTTP request/response and validation
+- `service`: business logic and token rules
+- `repository`: PostgreSQL access
+- `middleware`: JWT verification for protected routes
 
----
-
-## Proje Dizin Yapısı
+## Project Structure
 
 ```text
 auth-service/
 ├── cmd/
-│   └── main.go              # Sistemin giriş noktası, Dependency Injection ve Echo ayarları
+│   └── main.go
 ├── internal/
-│   ├── config/              # Viper & Validator ile .env sistem yakalayıcısı
-│   ├── domain/              # Çekirdek iş modelleri (User, Token) ve Hata kodları
-│   ├── handler/             # HTTP endpoint yöneticileri (Context parse, Payload Binding)
-│   ├── middleware/          # JWT yetkilendirme yakalayıcısı
-│   ├── repository/          # Postgresql SQLx veritabanı iletişimi (Create, Lookup)
-│   └── service/             # Tüm iş mantığı, şifreleme ve token operasyonlarının beyni
-├── db.sh                    # Bağımsız Docker Postgres DB yönetim scripti
-├── test.sh                  # Terminal uçtan uca otomasyon test betiği
-└── api.http                 # VS Code için manuel REST Client testleri
+│   ├── config/
+│   ├── domain/
+│   ├── handler/
+│   ├── middleware/
+│   ├── repository/
+│   └── service/
+├── db.sh
+├── test.sh
+└── api.http
 ```
 
----
+## Prerequisites
 
-## Ön Koşullar
-
-Servisin çalışması için:
 - Go 1.22+
-- PostgreSQL 15+ (Docker veya lokal)
+- PostgreSQL 15+ (Docker or local)
 
----
+## Configuration
 
-## Lokal Çalıştırma
+Create `.env` from `.env.example` and update values if needed.
 
-İlk kurulumda `.env.example` baz alınarak `.env` oluştur.
+Common settings include:
 
-1. Veritabanını Hazırlama
+- DB connection info
+- JWT secret
+- access/refresh token TTLs
+- server port
 
-Docker varsa `db.sh` ile izole Postgres ortamı kurulur. Lokal Postgres kullanıyorsan `.env` bağlantı bilgilerini güncelle.
+## Run Service Only
+
+1. Prepare DB:
 
 ```bash
-# Docker ortamını hazırlamak için (opsiyonel):
 sh db.sh reset
 ```
 
-2. Servisi Başlatma
+2. Run service:
 
 ```bash
 go run ./cmd/main.go
-# VEYA derleyip çalıştırabilirsiniz:
+```
+
+Optional binary run:
+
+```bash
 go build -o bin/app ./cmd/main.go && ./bin/app
 ```
 
----
+## API Endpoints
 
-## Endpoints
+Base path: `/api/v1/auth`
 
-| İsim | Method | Endpoint | İçerik (Payload / Header) | Yetki |
-|---|---|---|---|---|
-| Sağlık Testi | GET | `/health` | Servis ve DB bağlantı durumunu döner | Yok |
-| Kayıt Ol | POST | `/api/v1/auth/register` | `{"email", "password", "full_name"}` | Yok |
-| Giriş Yap | POST | `/api/v1/auth/login` | `{"email", "password"}` | Yok |
-| Token Yenile | POST | `/api/v1/auth/refresh` | `{"refresh_token"}` | Yok |
-| Çıkış | POST | `/api/v1/auth/logout` | `{"refresh_token"}` | Yok |
-| Profil (Me) | GET | `/api/v1/auth/me` | `Authorization: Bearer <Access_Token>` | Gerekli |
+| Name | Method | Endpoint | Auth Required |
+|---|---|---|---|
+| Health | GET | `/health` | No |
+| Register | POST | `/api/v1/auth/register` | No |
+| Login | POST | `/api/v1/auth/login` | No |
+| Refresh | POST | `/api/v1/auth/refresh` | No |
+| Logout | POST | `/api/v1/auth/logout` | No |
+| Me | GET | `/api/v1/auth/me` | Yes |
 
----
+### Request/Response Notes
 
-## Test
+- Token response fields use snake_case: `access_token`, `refresh_token`
+- Error contract: `error`, `code`, optional `details`
+- Validation errors return `code=VALIDATION_ERROR`
 
-Unit testler mock repository ile koşar.
+## Testing
 
-**Birim Testleri Çalıştırmak İçin:**
+Run unit tests:
+
 ```bash
 go test ./internal/service/... -v
 ```
 
-Çalışan bir sistemde auth test scripti için:
+Run auth-only HTTP script:
+
 ```bash
 bash test.sh
 ```
 
-Tüm sistem için tek komut smoke testi:
+Run full integration smoke from repo root:
 
 ```bash
-sh ../scripts/smoke.sh
+sh scripts/smoke.sh
 ```

@@ -1,63 +1,68 @@
 # Courier Microservices
 
-Bu monorepo, birbirinden bağımsız çalışan iki temel servisten oluşur:
+This monorepo contains two core services:
 
-- [auth-service/](auth-service/): Go + Echo ile kimlik doğrulama ve JWT üretimi
-- [order-service/](order-service/): Spring Boot ile sipariş yönetimi
+- [auth-service/](auth-service/): authentication, JWT issuance, refresh token flow (Go + Echo)
+- [order-service/](order-service/): order lifecycle management (Spring Boot)
 
-Sistem script-first yaklaşımla sade tutuldu. Docker Compose yok; tüm temel operasyonlar scriptlerle yönetilir.
+The project follows a script-first local workflow. There is no Docker Compose dependency for daily development.
 
-## Servisler
+## Services
 
-| Servis | Port | Sağlık Endpointi |
+| Service | Port | Health Endpoint |
 |---|---|---|
 | Auth Service | 8081 | `/health` |
 | Order Service | 8082 | `/actuator/health` |
 
-## Hızlı Başlangıç
+## Quick Start
 
-Repo kök dizininden:
+From the repository root:
 
 ```bash
 sh scripts/up.sh
 ```
 
-Bu komut şu işlemleri yapar:
+This script:
 
-- `auth_postgres` ve `order_postgres` containerlarını hazırlar/başlatır
-- auth-service migration çalıştırır
-- `order_rabbitmq` containerını başlatır
-- auth-service ve order-service'i ayağa kaldırır
-- health endpointleri ile servisleri doğrular
+- ensures `auth_postgres` and `order_postgres` containers are running
+- runs auth DB migration
+- ensures `order_rabbitmq` is running
+- starts both services
+- waits for health checks before finishing
 
-## Smoke Test
+## Integration Smoke Test
 
-Sistem ayaktayken tek komutla auth + order akışını test etmek için:
+With services running:
 
 ```bash
 sh scripts/smoke.sh
 ```
 
-Bu komut [order-service/test.sh](order-service/test.sh) üzerinden şu akışı doğrular:
+This validates an end-to-end flow:
 
 - register
 - login
-- order create/get/update/cancel
+- unauthorized order access check
+- create/get/update/cancel order
 - refresh token
 
-## Sistemi Durdurma
+## Stop Everything
 
 ```bash
 sh scripts/down.sh
 ```
 
-Containerları da silmek istersen:
+To also remove containers:
 
 ```bash
 REMOVE_CONTAINERS=1 sh scripts/down.sh
 ```
 
-## Servisleri Ayrı Çalıştırma
+## Postman
 
-Sadece auth-service detayları için [auth-service/README.md](auth-service/README.md),
-sadece order-service detayları için [order-service/README.md](order-service/README.md) dosyasına bak.
+Ready-to-import files are available in [postman/courier-microservices.collection.json](postman/courier-microservices.collection.json) and [postman/courier-local.environment.json](postman/courier-local.environment.json).
+
+## Service-Specific Docs
+
+- [auth-service/README.md](auth-service/README.md)
+- [order-service/README.md](order-service/README.md)

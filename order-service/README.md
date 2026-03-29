@@ -1,42 +1,45 @@
 # Order Service
 
-Order service strict clean architecture prensipleriyle geliştirildi:
+Order Service manages order lifecycle operations using Spring Boot and clean architecture.
 
-- `domain`: business kuralları, entity ve portlar
-- `application`: use-case katmanı
-- `infrastructure`: JPA ve RabbitMQ adapterları
-- `presentation`: HTTP endpointleri ve JWT filtresi
+## Architecture
 
-## En Kolay Çalıştırma (Önerilen)
+- `domain`: entities, business rules, domain ports
+- `application`: use cases and DTOs
+- `infrastructure`: JPA persistence and RabbitMQ publishers
+- `presentation`: REST API, request validation, JWT user filter
 
-Bu servis auth-service ile birlikte çalışır. Repo kökünden şu akış önerilir:
+## Recommended Local Workflow
+
+From repository root:
 
 ```bash
 sh scripts/up.sh
 sh scripts/smoke.sh
 ```
 
-Bu akışta order-service otomatik olarak ayağa kalkar.
+## Run Order Service Only
 
-## Sadece Order Service Çalıştırma
-
-Order servisini bağımsız denemek için:
-
-1. Veritabanı containerını hazırla:
+1. Prepare environment file:
 
 ```bash
 cp .env.example .env
+```
+
+2. Prepare order DB:
+
+```bash
 sh db.sh reset
 ```
 
-2. RabbitMQ başlat:
+3. Start RabbitMQ:
 
 ```bash
 docker rm -f order_rabbitmq 2>/dev/null || true
 docker run -d --name order_rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4.2.2-management
 ```
 
-3. Servisi başlat:
+4. Run service:
 
 ```bash
 mvn spring-boot:run
@@ -46,27 +49,76 @@ mvn spring-boot:run
 
 Base URL: `http://localhost:8082/api/v1/orders`
 
-- `POST /api/v1/orders`
-- `GET /api/v1/orders/{id}`
-- `PATCH /api/v1/orders/{id}/status`
-- `DELETE /api/v1/orders/{id}`
+| Name | Method | Endpoint |
+|---|---|---|
+| Create Order | POST | `/api/v1/orders` |
+| Get Order | GET | `/api/v1/orders/{id}` |
+| Change Status | PATCH | `/api/v1/orders/{id}/status` |
+| Cancel Order | DELETE | `/api/v1/orders/{id}` |
 
-Tüm endpointler JWT gerektirir:
+All endpoints require:
 
 `Authorization: Bearer <jwt>`
 
-JWT içinde `user_id` claim bulunmalıdır.
+JWT must include `user_id` claim.
 
-## Test
+### Response Contract
 
-Unit/integration test:
+Order response fields are standardized to snake_case:
+
+- `id`
+- `user_id`
+- `status`
+- `total_amount`
+- `created_at`
+- `updated_at`
+- `items[].product_id`
+- `items[].unit_price`
+
+Error contract:
+
+- `error`
+- `code`
+- optional `details`
+
+## Messaging
+
+Order service publishes events to RabbitMQ for major lifecycle actions:
+
+- order placed
+- order confirmed/delivered transitions
+- order cancelled
+
+RabbitMQ management UI (default): `http://localhost:15672`
+
+## Testing
+
+Run unit/integration tests:
 
 ```bash
 mvn test
 ```
 
-Auth ile birlikte e2e benzeri smoke test:
+Run service-level script test:
 
 ```bash
 sh test.sh
 ```
+
+Run full cross-service smoke from repo root:
+
+```bash
+sh scripts/smoke.sh
+```
+
+## Troubleshooting
+
+- `401` on order endpoints without token is expected.
+- If startup fails with port conflicts, run:
+
+```bash
+sh scripts/down.sh
+sh scripts/up.sh
+```
+
+- If DB or RabbitMQ state is inconsistent, restart containers with `db.sh reset` and recreate RabbitMQ container.
