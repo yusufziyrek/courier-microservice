@@ -1,7 +1,5 @@
 package com.yusufziyrek.order.domain;
 
-import com.yusufziyrek.order.domain.exception.InvalidOrderStateException;
-
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -18,8 +16,8 @@ public class Order {
     private OffsetDateTime updatedAt;
     private List<OrderItem> items = new ArrayList<>();
 
-    // Varsayılan constructor gizlendi (Sadece Factory ve Mapper'lar için açık kapı bırakıldı)
-    public Order() {}
+    public Order() {
+    }
 
     // DDD Fabrika (Factory) Metodu
     public static Order create(UUID userId) {
@@ -35,8 +33,7 @@ public class Order {
     public void addItem(OrderItem item) {
         this.items.add(item);
         this.totalAmount = this.totalAmount.add(
-            item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()))
-        );
+                item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         this.updatedAt = OffsetDateTime.now();
     }
 
@@ -44,7 +41,8 @@ public class Order {
 
     public void confirm() {
         if (this.status != OrderStatus.PENDING) {
-            throw new InvalidOrderStateException("Sipariş yalnızca PENDING durumundayken onaylanabilir. Geçerli durum: " + this.status);
+            throw new InvalidOrderStateException(
+                    "Sipariş yalnızca PENDING durumundayken onaylanabilir. Geçerli durum: " + this.status);
         }
         this.status = OrderStatus.CONFIRMED;
         this.updatedAt = OffsetDateTime.now();
@@ -52,7 +50,8 @@ public class Order {
 
     public void prepare() {
         if (this.status != OrderStatus.CONFIRMED) {
-            throw new InvalidOrderStateException("Sipariş yalnızca CONFIRMED durumundayken yemeğe hazırlanabilir. Geçerli durum: " + this.status);
+            throw new InvalidOrderStateException(
+                    "Sipariş yalnızca CONFIRMED durumundayken yemeğe hazırlanabilir. Geçerli durum: " + this.status);
         }
         this.status = OrderStatus.PREPARING;
         this.updatedAt = OffsetDateTime.now();
@@ -60,7 +59,8 @@ public class Order {
 
     public void ship() {
         if (this.status != OrderStatus.PREPARING) {
-            throw new InvalidOrderStateException("Sipariş yalnızca PREPARING durumundayken kuryeye verilebilir. Geçerli durum: " + this.status);
+            throw new InvalidOrderStateException(
+                    "Sipariş yalnızca PREPARING durumundayken kuryeye verilebilir. Geçerli durum: " + this.status);
         }
         this.status = OrderStatus.ON_THE_WAY;
         this.updatedAt = OffsetDateTime.now();
@@ -68,7 +68,8 @@ public class Order {
 
     public void deliver() {
         if (this.status != OrderStatus.ON_THE_WAY) {
-            throw new InvalidOrderStateException("Sipariş yalnızca Kuryedeyken teslim edilebilir. Geçerli durum: " + this.status);
+            throw new InvalidOrderStateException(
+                    "Sipariş yalnızca Kuryedeyken teslim edilebilir. Geçerli durum: " + this.status);
         }
         this.status = OrderStatus.DELIVERED;
         this.updatedAt = OffsetDateTime.now();
@@ -76,32 +77,70 @@ public class Order {
 
     public void cancel() {
         if (this.status != OrderStatus.PENDING && this.status != OrderStatus.CONFIRMED) {
-            throw new InvalidOrderStateException("Sipariş iptali yalnızca PENDING veya CONFIRMED durumlarında mümkündür. Geçerli durum: " + this.status);
+            throw new InvalidOrderStateException(
+                    "Sipariş iptali yalnızca PENDING veya CONFIRMED durumlarında mümkündür. Geçerli durum: "
+                            + this.status);
         }
         this.status = OrderStatus.CANCELLED;
         this.updatedAt = OffsetDateTime.now();
     }
 
-    // Getters & (Gereken) Setters 
-    // Not: ID vb. alanlara setter ekliyoruz ki Infrastructure DB'den çekerken ID'yi doldurabilsin.
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    // Getters & (Gereken) Setters
+    // Not: ID vb. alanlara setter ekliyoruz ki Infrastructure DB'den çekerken ID'yi
+    // doldurabilsin.
+    public UUID getId() {
+        return id;
+    }
 
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public OrderStatus getStatus() { return status; }
-    public void setStatus(OrderStatus status) { this.status = status; }
+    public UUID getUserId() {
+        return userId;
+    }
 
-    public BigDecimal getTotalAmount() { return totalAmount; }
-    public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+    public void setUserId(UUID userId) {
+        this.userId = userId;
+    }
 
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+    public OrderStatus getStatus() {
+        return status;
+    }
 
-    public OffsetDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public void setStatus(OrderStatus status) {
+        this.status = status;
+    }
 
-    public List<OrderItem> getItems() { return items; }
-    public void setItems(List<OrderItem> items) { this.items = items; }
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public List<OrderItem> getItems() {
+        return items;
+    }
+
+    public void setItems(List<OrderItem> items) {
+        this.items = items;
+    }
 }
